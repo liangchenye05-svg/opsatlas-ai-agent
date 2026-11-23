@@ -1,0 +1,40 @@
+server:
+  port: ${OPSATLAS_PORT:8092}
+  error:
+    include-message: never
+spring:
+  application:
+    name: opsatlas
+  datasource:
+    url: ${OPSATLAS_JDBC_URL:jdbc:mysql://127.0.0.1:13392/opsatlas?connectionTimeZone=Asia/Shanghai}
+    username: ${OPSATLAS_DB_USER:opsatlas_app}
+    password: ${OPSATLAS_DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 8
+  flyway:
+    enabled: true
+  mvc:
+    async:
+      request-timeout: 65s
+  ai:
+    mcp:
+      server:
+        name: opsatlas-readonly
+        version: "0.1.0"
+        protocol: STATELESS
+        type: SYNC
+        tool-callback-converter: false
+        annotation-scanner:
+          enabled: false
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+    default-statement-timeout: 5
+    arg-name-based-constructor-auto-mapping: true
+opsatlas:
+  jwt-secret: ${OPSATLAS_JWT_SECRET}
+  demo-password: ${OPSATLAS_DEMO_PASSWORD:}
+logging:
+  structured:
+    format:
+      console: ecs

@@ -1,0 +1,20 @@
+.runtime/
+.env
+.env.*
+!.env.example
+backend/target/
+frontend/dist/
+frontend/node_modules/
+*.log
+__pycache__/
+.idea/
+*.iml
+
+# Local reports and credentials
+docs/showcase/local-evidence/
+docs/frontend-upgrade/
+logs-samples/
+*.dpapi
+*.pfx
+*.pem
+*.key

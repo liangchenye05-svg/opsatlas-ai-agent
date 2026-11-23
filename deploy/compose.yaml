@@ -1,0 +1,73 @@
+name: opsatlas
+services:
+  db:
+    image: mysql:8.0.46
+    environment:
+      MYSQL_DATABASE: opsatlas
+      MYSQL_USER: opsatlas_app
+      MYSQL_PASSWORD: ${OPSATLAS_DB_PASSWORD:?Run deploy/init-local.ps1}
+      MYSQL_ROOT_PASSWORD: ${OPSATLAS_DB_ROOT_PASSWORD:?Run deploy/init-local.ps1}
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:${OPSATLAS_DB_PORT:-13392}:3306"
+    volumes:
+      - mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql -h 127.0.0.1 -u $$MYSQL_USER $$MYSQL_DATABASE -e 'SELECT 1'"]
+      interval: 5s
+      timeout: 4s
+      start_period: 30s
+      retries: 12
+  qdrant:
+    image: qdrant/qdrant:v1.20.1
+    ports:
+      - "127.0.0.1:${OPSATLAS_QDRANT_PORT:-16342}:6333"
+    volumes:
+      - qdrant:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo >/dev/tcp/127.0.0.1/6333'"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${OPSATLAS_PORT:-8092}:8092"
+    environment:
+      OPSATLAS_PORT: 8092
+      OPSATLAS_JDBC_URL: "jdbc:mysql://db:3306/opsatlas?connectionTimeZone=Asia/Shanghai"
+      OPSATLAS_DB_USER: opsatlas_app
+      OPSATLAS_DB_PASSWORD: ${OPSATLAS_DB_PASSWORD:?Run deploy/init-local.ps1}
+      OPSATLAS_JWT_SECRET: ${OPSATLAS_JWT_SECRET:?Run deploy/init-local.ps1}
+      OPSATLAS_DEMO_PASSWORD: ${OPSATLAS_DEMO_PASSWORD:-}
+      OPSATLAS_QDRANT_URL: http://qdrant:6333
+      OPSATLAS_MODEL: ${OPSATLAS_MODEL:-deepseek-flash}
+      OPSATLAS_MODEL_URL: ${OPSATLAS_MODEL_URL:-https://api.deepseek.com}
+      OPSATLAS_MODEL_API_KEY: ${OPSATLAS_MODEL_API_KEY:-}
+      OPSATLAS_MODEL_TIMEOUT: ${OPSATLAS_MODEL_TIMEOUT:-12s}
+      OPSATLAS_EMBEDDING_URL: ${OPSATLAS_EMBEDDING_URL:-}
+      OPSATLAS_EMBEDDING_MODEL: ${OPSATLAS_EMBEDDING_MODEL:-character-bigrams}
+      OPSATLAS_EMBEDDING_DIMENSIONS: ${OPSATLAS_EMBEDDING_DIMENSIONS:-384}
+      OPSATLAS_EMBEDDING_API_KEY: ${OPSATLAS_EMBEDDING_API_KEY:-}
+      SPRING_WEB_RESOURCES_STATIC_LOCATIONS: file:/app/ui/
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8092/api/health"]
+      interval: 5s
+      timeout: 3s
+      start_period: 20s
+      retries: 12
+volumes:
+  mysql:
+  qdrant:
